@@ -1,11 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 export function Footer() {
   return (
-    <footer className="w-full bg-gray-800 border-t border-gray-700 py-8 px-6 mt-auto">
-      <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5">
-        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-5 text-white text-base">
+    <footer className="w-full bg-gray-800 border-t border-gray-700 py-4 px-6 mt-auto">
+      <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-white text-sm sm:text-base">
           <span>Built with</span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <a
               href="https://www.orchids.app/"
               target="_blank"
@@ -15,8 +15,8 @@ export function Footer() {
               <img 
                 src="/orchids-logo.svg" 
                 alt="Orchids" 
-                height={28}
-                className="h-7 w-auto brightness-0 invert"
+                height={24}
+                className="h-6 w-auto brightness-0 invert"
               />
             </a>
             <span className="text-white">•</span>
@@ -26,7 +26,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity"
             >
-              <svg width="28" height="28" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="24" height="24" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <mask id="mask0" style={{maskType: "alpha"}} maskUnits="userSpaceOnUse" x="0" y="0" width="180" height="180">
                   <circle cx="90" cy="90" r="90" fill="black"/>
                 </mask>
@@ -58,9 +58,9 @@ export function Footer() {
               <img 
                 src="/perplexity-logo.svg" 
                 alt="Perplexity" 
-                width={90} 
-                height={28}
-                className="h-7 w-auto brightness-0 invert"
+                width={80} 
+                height={24}
+                className="h-6 w-auto brightness-0 invert"
               />
             </a>
           </div>
@@ -70,14 +70,14 @@ export function Footer() {
           href="https://www.akileshjayakumar.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-base text-white hover:text-emerald-400 transition-colors flex items-center gap-2"
+          className="text-sm sm:text-base text-white hover:text-emerald-400 transition-colors flex items-center gap-2"
         >
           <span>akileshjayakumar.com</span>
         </a>
       </div>
       
-      <div className="max-w-2xl mx-auto mt-5 pt-5 border-t border-gray-600">
-        <p className="text-center text-sm text-white">
+      <div className="max-w-2xl mx-auto mt-3 pt-3 border-t border-gray-600">
+        <p className="text-center text-xs sm:text-sm text-white">
           Inspired by{" "}
           <a
             href="https://www.nytimes.com/games/wordle/index.html"
