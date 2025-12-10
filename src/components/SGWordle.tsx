@@ -420,8 +420,8 @@ export function SGWordle() {
 
   if (!playerChecked) {
     return (
-      <div className="min-h-screen flex flex-col items-center p-2 sm:p-3 md:p-4 bg-gray-50">
-        <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-xl flex flex-col">
+      <div className="flex flex-col items-center justify-center p-2 sm:p-3 md:p-4 bg-gray-50 py-16">
+        <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-xl flex flex-col items-center">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
@@ -451,7 +451,7 @@ export function SGWordle() {
 
   if (!category) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 bg-gray-50 overflow-y-auto">
+      <div className="flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 bg-gray-50 py-8 sm:py-12 md:py-16">
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -566,8 +566,8 @@ export function SGWordle() {
   }
 
   return (
-    <div className="h-full flex flex-col items-center p-2 sm:p-3 md:p-4 bg-gray-50 overflow-y-auto">
-      <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-xl flex flex-col h-full">
+    <div className="flex flex-col items-center p-2 sm:p-3 md:p-4 bg-gray-50 py-4 sm:py-6">
+      <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-xl flex flex-col">
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
