@@ -37,6 +37,51 @@ const CATEGORY_INFO: Record<Category, { label: string; subtitle: string; icon: s
   all: { label: "Mix It Up", subtitle: "A bit of everything!", icon: "🎲", color: "from-rose-500 to-amber-500" },
 };
 
+const USED_WORDS_PREFIX = "sg-wordle-used-";
+const MAX_USED_WORDS = 50;
+const MAX_EXCLUDE_SENT = 25;
+
+const normalizeStoredWord = (word: string) => word.trim().toUpperCase();
+
+function readUsedWords(category: Category): string[] {
+  if (typeof window === "undefined") return [];
+  const raw = window.localStorage.getItem(`${USED_WORDS_PREFIX}${category}`);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeUsedWords(category: Category, words: string[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(`${USED_WORDS_PREFIX}${category}`, JSON.stringify(words));
+}
+
+function rememberWordForCategory(category: Category, word: string) {
+  if (typeof window === "undefined") return;
+  const normalized = normalizeStoredWord(word);
+  const existing = readUsedWords(category).filter(entry => entry !== normalized);
+  existing.unshift(normalized);
+  writeUsedWords(category, existing.slice(0, MAX_USED_WORDS));
+}
+
+function getExcludeList(category: Category): string[] {
+  return Array.from(new Set(readUsedWords(category).map(normalizeStoredWord)));
+}
+
+function clearUsedWords(category: Category) {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(`${USED_WORDS_PREFIX}${category}`);
+}
+
+const buildEmptyBoard = (length: number): Tile[][] =>
+  Array.from({ length: 6 }, () =>
+    Array.from({ length }, () => ({ letter: "", state: "empty" as TileState })),
+  );
+
 export function SGWordle() {
   const [playerChecked, setPlayerChecked] = useState(false);
   const [player, setPlayer] = useState<Player | null>(null);
@@ -57,6 +102,7 @@ export function SGWordle() {
   const [showStats, setShowStats] = useState(false);
   const [stats, setStats] = useState({ played: 0, won: 0, streak: 0, maxStreak: 0 });
   const [loadingWord, setLoadingWord] = useState(false);
+  const [wordError, setWordError] = useState<string | null>(null);
 
   const [showMerlionChat, setShowMerlionChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -138,6 +184,7 @@ export function SGWordle() {
   const startGame = async (cat: Category) => {
     setCategory(cat);
     setLoadingWord(true);
+    setWordError(null);
     setCurrentWord(null);
     setGuesses([]);
     setCurrentGuess("");
@@ -152,12 +199,38 @@ export function SGWordle() {
     setExplanation(null);
 
     try {
-      const word = await fetchDailyWord(cat);
-      setCurrentWord(word);
-      setGuesses(Array(6).fill(null).map(() => 
-        Array(word.word.length).fill({ letter: "", state: "empty" })
-      ));
+      const excludeSet = new Set(getExcludeList(cat));
+      let nextWord: WordData | null = null;
+      let attempt = 0;
+
+      while (attempt < 3 && !nextWord) {
+        const candidate = await fetchDailyWord(cat, Array.from(excludeSet).slice(0, MAX_EXCLUDE_SENT));
+        const normalized = candidate.word.toUpperCase();
+
+        if (excludeSet.has(normalized)) {
+          console.warn(`[SGWordle] Duplicate word "${candidate.word}" for ${cat}; resetting cache.`);
+          clearUsedWords(cat);
+          excludeSet.add(normalized);
+          attempt += 1;
+          continue;
+        }
+
+        excludeSet.add(normalized);
+        nextWord = candidate;
+      }
+
+      if (!nextWord) {
+        throw new Error("Unable to fetch a verified word. Please try again.");
+      }
+
+      rememberWordForCategory(cat, nextWord.word);
+      setCurrentWord(nextWord);
+      setGuesses(buildEmptyBoard(nextWord.word.length));
     } catch (error) {
+      const message = error instanceof Error 
+        ? error.message 
+        : "Unable to fetch a verified word. Please try again.";
+      setWordError(message);
       console.error("Failed to start game:", error);
     } finally {
       setLoadingWord(false);
@@ -460,8 +533,11 @@ export function SGWordle() {
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight mb-2 sm:mb-4 text-gray-900">
             GuessSG
           </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-500 font-light">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-500 font-light flex items-center justify-center gap-2">
             guess singapore in 6 tries
+            <span role="img" aria-label="Singapore flag">
+              🇸🇬
+            </span>
           </p>
           {player && (
             <p className="text-sm text-emerald-600 mt-2">
@@ -490,7 +566,7 @@ export function SGWordle() {
               whileHover={{ scale: 1.05, y: -5 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => startGame(cat)}
-              className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 bg-gradient-to-br ${info.color} shadow-lg group`}
+              className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 bg-linear-to-br ${info.color} shadow-lg group`}
             >
               <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors" />
               <div className="relative z-10">
@@ -603,7 +679,7 @@ export function SGWordle() {
         </motion.div>
 
         {loadingWord ? (
-          <div className="flex flex-col items-center justify-center py-16 sm:py-20">
+          <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
@@ -611,8 +687,32 @@ export function SGWordle() {
             >
               🦁
             </motion.div>
-            <p className="text-gray-500 text-base sm:text-lg">Generating today's word...</p>
+            <p className="text-gray-500 text-base sm:text-lg">Generating a new word...</p>
             <p className="text-gray-400 text-xs sm:text-sm mt-1">powered by perplexity api</p>
+            {wordError && (
+              <p className="text-red-500 text-xs sm:text-sm mt-4 max-w-sm">{wordError}</p>
+            )}
+          </div>
+        ) : !currentWord ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <p className="text-gray-500 text-sm sm:text-base mb-4 max-w-sm">
+              {wordError ?? "We couldn't fetch a new verified word. Wanna try again?"}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => startGame(category)}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white w-full sm:w-auto"
+              >
+                Try Again
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCategory(null)}
+                className="w-full sm:w-auto"
+              >
+                Back to Menu
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -620,7 +720,7 @@ export function SGWordle() {
               {guesses.map((row, rowIndex) => (
                 <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1 mb-1 sm:mb-1.5">
                   {row.map((tile, tileIndex) => {
-                    const wordLen = currentWord?.word.length || 5;
+                    const wordLen = currentWord.word.length;
                     const tileSize = wordLen <= 5 
                       ? "w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 lg:w-14 lg:h-14 text-lg sm:text-xl md:text-2xl" 
                       : wordLen <= 7 
@@ -841,9 +941,6 @@ export function SGWordle() {
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-blue-50 rounded-xl p-2 sm:p-3 mb-3 sm:mb-4 border border-blue-200"
                       >
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-base">🦁</span>
-                        </div>
                         <div className="prose prose-sm prose-blue max-w-none text-blue-800 [&>p]:mb-1 [&>p:last-child]:mb-0 [&_strong]:text-blue-950 text-xs sm:text-sm">
                           <ReactMarkdown>{aiReaction}</ReactMarkdown>
                         </div>
@@ -871,7 +968,7 @@ export function SGWordle() {
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
-                        className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 text-left border border-amber-200"
+                        className="bg-linear-to-br from-amber-50 to-orange-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 text-left border border-amber-200"
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-base sm:text-lg">🎯</span>
@@ -887,7 +984,7 @@ export function SGWordle() {
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
-                        className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 text-left border border-purple-200"
+                        className="bg-linear-to-br from-purple-50 to-indigo-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 text-left border border-purple-200"
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-base sm:text-lg">📚</span>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { supabase, Player } from "@/lib/supabase";
+import { Leaderboard } from "@/components/Leaderboard";
 
 interface PlayerSetupProps {
   onComplete: (player: Player | null) => void;
@@ -13,6 +14,7 @@ export function PlayerSetup({ onComplete }: PlayerSetupProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isReturning, setIsReturning] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const handleCreateProfile = async () => {
     if (!nickname.trim()) {
@@ -94,7 +96,17 @@ export function PlayerSetup({ onComplete }: PlayerSetupProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50 relative">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+        <button
+          onClick={() => setShowLeaderboard(true)}
+          className="inline-flex items-center gap-2 rounded-full bg-white/80 backdrop-blur px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-emerald-700 shadow-lg ring-1 ring-emerald-100 hover:bg-white transition-all"
+          aria-label="Open leaderboard"
+        >
+          <span className="text-base sm:text-lg">🏆</span>
+          <span className="font-medium">Leaderboard</span>
+        </button>
+      </div>
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -200,6 +212,11 @@ export function PlayerSetup({ onComplete }: PlayerSetupProps) {
           Guest stats are saved locally and won&apos;t appear on the leaderboard
         </p>
       </motion.div>
+      <Leaderboard
+        open={showLeaderboard}
+        onOpenChange={setShowLeaderboard}
+        currentPlayer={null}
+      />
     </div>
   );
 }

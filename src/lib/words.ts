@@ -45,45 +45,30 @@ export const WORDS: WordData[] = [
   { word: 'GABRA', category: 'singlish', hint: 'Panicked and confused', emoji: '😵' },
 ];
 
-function getDailySeed(): number {
-  const today = new Date();
-  const start = new Date(2025, 0, 1);
-  const diff = today.getTime() - start.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
-
-function seededRandom(seed: number): number {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
-}
-
-export function getDailyWord(category: Category): WordData {
-  const filtered = category === 'all' 
-    ? WORDS 
-    : WORDS.filter(w => w.category === category);
-  
-  const daySeed = getDailySeed();
-  const categorySeed = category.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const seed = daySeed + categorySeed;
-  
-  const index = Math.floor(seededRandom(seed) * filtered.length);
-  return filtered[index];
-}
-
-export function getRandomWord(category: Category): WordData {
-  return getDailyWord(category);
-}
-
 export function getWordsByCategory(category: Category): WordData[] {
   return category === 'all' ? WORDS : WORDS.filter(w => w.category === category);
 }
 
-export async function fetchDailyWord(category: Category): Promise<WordData> {
+export function getRandomWord(category: Category, exclude: string[] = []): WordData {
+  const pool = getWordsByCategory(category);
+  const excludeSet = new Set(exclude.map(word => word.trim().toUpperCase()));
+
+  const available = pool.filter(word => !excludeSet.has(word.word.toUpperCase()));
+  const source = available.length > 0 ? available : pool;
+
+  const index = Math.floor(Math.random() * source.length);
+  return source[index];
+}
+
+export async function fetchDailyWord(category: Category, exclude: string[] = []): Promise<WordData> {
   try {
     const response = await fetch('/api/daily-word', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category }),
+      body: JSON.stringify({
+        category,
+        exclude: exclude.map(word => word.trim().toUpperCase()),
+      }),
     });
 
     if (!response.ok) {
@@ -91,14 +76,19 @@ export async function fetchDailyWord(category: Category): Promise<WordData> {
     }
 
     const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
     return {
       word: data.word,
-      category: category === 'all' ? 'food' : category,
+      category: (data.category as Category) ?? category,
       hint: data.hint,
       emoji: data.emoji,
     };
   } catch (error) {
     console.error('Error fetching daily word, using fallback:', error);
-    return getDailyWord(category);
+    return getRandomWord(category, exclude);
   }
 }
